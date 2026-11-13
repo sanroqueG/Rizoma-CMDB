@@ -28,9 +28,11 @@ function uploadBackup(command, { file, keyFile }, { timeoutMs = 30 * 60e3, spawn
     const keep = (d) => { output = (output + d).slice(-4000); };
     child.stdout.on('data', keep);
     child.stderr.on('data', keep);
-    const timer = setTimeout(() => { output += '\n(tempo limite excedido)'; killTree(child); }, timeoutMs);
+    // Um envio que excedeu o tempo limite é sempre uma falha, mesmo que o processo acabe a seguir com código 0
+    let timedOut = false;
+    const timer = setTimeout(() => { timedOut = true; output += '\n(tempo limite excedido)'; killTree(child); }, timeoutMs);
     child.on('error', (e) => { clearTimeout(timer); resolve({ ok: false, code: null, ms: Date.now() - started, output: e.message }); });
-    child.on('close', (code) => { clearTimeout(timer); resolve({ ok: code === 0, code, ms: Date.now() - started, output: output.trim() }); });
+    child.on('close', (code) => { clearTimeout(timer); resolve({ ok: code === 0 && !timedOut, code, ms: Date.now() - started, output: output.trim() }); });
   });
 }
 
