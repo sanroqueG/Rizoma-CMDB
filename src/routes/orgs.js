@@ -46,7 +46,8 @@ module.exports = function registerOrgs(core) {
       (SELECT COUNT(*) FROM cis c JOIN clients cl ON cl.id = c.client_id WHERE cl.org_id = ?) AS cis,
       (SELECT COUNT(*) FROM users WHERE org_id = ?) AS users`, orgId, orgId, orgId);
   }
-  const orgView = (o) => ({ ...o, usage: usage(o.id) });
+  const orgView = (o) => ({
+    support_until: o.support_access_until && o.support_access_until > new Date().toISOString() ? o.support_access_until : null, ...o, usage: usage(o.id) });
 
   /** Cria a organização e o seu primeiro administrador. */
   /** @param {{ orgName: any, plan?: string, limits: any, admin: any }} o */
@@ -70,16 +71,23 @@ module.exports = function registerOrgs(core) {
   }
 
   // ------------------------------------------------------------ registo self-service
-  add('POST', '/api/signup', ({ body, req, res }) => {
+  add('POST', '/api/signup', async ({ body, req, res }) => {
     if (!core.signupEnabled) fail(404, 'O registo de novas organizações não está ativo');
     const key = `signup:${req.socket.remoteAddress}`;
     if (core.state.throttle.blocked(key, 5, 3600e3)) fail(429, 'Demasiados registos a partir deste endereço. Tente mais tarde.');
     core.state.throttle.hit(key, 3600e3);
+    if (core.legal.termsUrl && body.accept_terms !== true) fail(400, 'Para criar a conta, aceite os Termos de Serviço e a Política de Privacidade');
     const { orgId, userId } = createOrg({
       orgName: body.organization, limits: defaultLimits,
       admin: { username: body.username, name: body.name, email: body.email, password: body.password },
     });
-    const u = one('SELECT * FROM users WHERE id = ?', userId);
+    core.startTrial(orgId); // período experimental (só quando os pagamentos estão ligados)
+    if (core.legal.termsUrl) run("UPDATE users SET terms_accepted_at = datetime('now'), terms_version = ? WHERE id = ?", core.legal.version || 'sem versão', userId);
+    let u = one('SELECT * FROM users WHERE id = ?', userId);
+    // Verificação do email: com email configurado envia a ligação; sem email não há forma de verificar
+    if (u.email && core.accountsMailerReady()) await core.sendVerification(u, req);
+    else run("UPDATE users SET email_verified_at = datetime('now') WHERE id = ?", u.id);
+    u = one('SELECT * FROM users WHERE id = ?', userId);
     createSession(res, u, 'password');
     audit('organization', orgId, null, body.organization, u.username, 'create', { origem: 'registo' }, orgId);
     return meView(u, 'password');

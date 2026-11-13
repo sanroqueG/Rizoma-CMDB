@@ -1,5 +1,5 @@
 /* SaaS: a minha organização (plano, utilização, exportação) e administração da plataforma (organizações). */
-import { GET, ME, api, badge, card, details, field, fmtDate, h, icon, isAdmin, openDialog, select, table, toast } from '../core.js';
+import { GET, ME, api, badge, card, check, confirmDialog, details, field, fmtDate, h, icon, isAdmin, openDialog, select, table, toast } from '../core.js';
 import { pageHead, render, setPage } from '../main.js';
 
 export const PLAN_LABEL = { clients: 'Clientes', cis: 'Ativos', users: 'Utilizadores' };
@@ -29,7 +29,110 @@ export async function viewOrganization() {
         h('p', { class: 'text-secondary small mb-0' }, 'Para alterar os limites do plano, contacte o suporte.')])),
       h('div', { class: 'col-lg-6' }, card('Dados da organização', [
         details([['Nome', o.name], ['Identificador', h('code', {}, o.slug)], ['Plano', o.plan], ['Criada em', fmtDate(o.created_at)]]),
-        h('p', { class: 'text-secondary small mt-3 mb-0' }, 'A exportação inclui clientes, locais, ativos, relações, contratos, tickets, utilizadores (sem passwords) e auditoria, num ficheiro JSON.')]))));
+        h('p', { class: 'text-secondary small mt-3 mb-0' }, 'A exportação inclui clientes, locais, ativos, relações, contratos, tickets, utilizadores (sem passwords) e auditoria, num ficheiro JSON.')])),
+      h('div', { class: 'col-12' }, await ssoCard()),
+      ME.is_platform ? null : h('div', { class: 'col-lg-6' }, await supportCard()),
+      ME.is_platform ? null : h('div', { class: 'col-lg-6' }, await deletionCard())));
+}
+
+/** Autorizar a equipa do Rizoma a entrar na organização para dar suporte. */
+async function supportCard() {
+  const s = await GET('/api/org/support-access');
+  const set = async (hours) => {
+    await api('PUT', '/api/org/support-access', { hours });
+    toast(hours ? 'Acesso de suporte autorizado.' : 'Acesso de suporte revogado.');
+    render();
+  };
+  return card('Acesso de suporte', [
+    h('p', { class: 'text-secondary' }, 'Permite à equipa de suporte do Rizoma entrar na organização como administrador, para ajudar a resolver um problema. Cada sessão dura no máximo 1 hora e fica na auditoria.'),
+    s.granted
+      ? [h('div', { class: 'alert alert-info' }, `Autorizado até ${fmtDate(s.until)}.`), h('button', { onclick: () => set(0) }, 'Revogar agora')]
+      : h('div', { class: 'btn-list' }, h('button', { onclick: () => set(24) }, 'Autorizar por 24 horas'), h('button', { onclick: () => set(72) }, 'Por 3 dias')),
+  ]);
+}
+
+/** RGPD: eliminar a organização e todos os dados (com prazo para desistir). */
+async function deletionCard() {
+  const d = await GET('/api/org/deletion');
+  if (d.requested) {
+    return card('Eliminação pedida', [
+      h('div', { class: 'alert alert-danger' }, `Pedida por ${d.requested_by} em ${fmtDate(d.requested_at)}. A organização e todos os dados vão ser eliminados em ${fmtDate(d.delete_at)}.`),
+      h('div', { class: 'btn-list' },
+        h('a', { class: 'btn', href: '/api/org/export', download: '' }, icon('download'), 'Exportar os dados antes'),
+        h('button', { class: 'primary', onclick: async () => {
+          await api('DELETE', '/api/org/deletion');
+          ME.org_delete_at = null;
+          toast('Eliminação cancelada.');
+          render();
+        } }, 'Desistir da eliminação')),
+    ]);
+  }
+  return card('Eliminar a organização', [
+    h('p', { class: 'text-secondary' }, `Apaga a organização e todos os dados: clientes, ativos, contratos, tickets, utilizadores e auditoria. Durante ${d.grace_days} dias a organização fica só de leitura e pode desistir; depois, a eliminação é definitiva. Exporte os dados antes, se precisar deles. A subscrição é cancelada no fim do período pago.`),
+    h('button', { class: 'btn-outline-danger', onclick: async () => {
+      const o = await GET('/api/org');
+      openDialog('Eliminar a organização', h('div', {},
+        h('p', {}, 'Para confirmar, escreva o identificador da organização: ', h('code', {}, o.slug)),
+        field('Identificador', h('input', { name: 'confirm', required: true, autocomplete: 'off' }))),
+      async (fd) => {
+        const r = await api('POST', '/api/org/deletion', { confirm: fd.get('confirm') });
+        ME.org_delete_at = r.delete_at;
+        toast('Eliminação pedida.');
+        render();
+      }, { danger: true, submitLabel: 'Pedir a eliminação' });
+    } }, icon('trash'), 'Eliminar a organização…'),
+  ]);
+}
+
+/** Login único (SSO) da organização: Microsoft Entra ID, Google Workspace, Okta, Keycloak... */
+async function ssoCard() {
+  const s = await GET('/api/org/sso');
+  const status = !s.configured ? badge('Não configurado') : s.enabled ? badge('Ativo', 'ok') : badge('Desligado', 'warn');
+  const configure = () => openDialog('Login único (SSO)', h('div', { class: 'row' },
+    h('div', { class: 'col-12 mb-3' }, h('div', { class: 'alert alert-info mb-0' },
+      'Registe o Rizoma como aplicação no seu fornecedor de identidade (OpenID Connect) com este URL de redirecionamento:',
+      h('div', { class: 'mt-1' }, h('code', {}, s.redirect_uri)))),
+    field('Nome no botão', h('input', { name: 'label', value: s.label, placeholder: 'Ex.: Microsoft' }), 'col-md-6'),
+    field('Emissor (issuer)', h('input', { name: 'issuer', required: true, value: s.issuer, placeholder: 'https://login.microsoftonline.com/<tenant>/v2.0' }), 'col-md-6'),
+    field('Client ID', h('input', { name: 'client_id', required: true, value: s.client_id, autocomplete: 'off' }), 'col-md-6'),
+    field(s.has_secret ? 'Client secret (deixe vazio para manter)' : 'Client secret', h('input', { name: 'client_secret', type: 'password', autocomplete: 'new-password' }), 'col-md-6'),
+    h('div', { class: 'col-12 mb-3' }, h('label', { class: 'form-label' }, 'Domínios de email'),
+      h('input', { name: 'domains', required: true, value: s.domains.join(', '), placeholder: 'empresa.pt, empresa.com' }),
+      h('div', { class: 'form-hint' }, 'Quem escrever um email destes domínios no login é encaminhado para este fornecedor. Separe por vírgulas.')),
+    h('div', { class: 'col-12' },
+      check(h('input', { type: 'checkbox', name: 'enabled', checked: !s.configured || s.enabled }), 'SSO ativo'),
+      check(h('input', { type: 'checkbox', name: 'auto_provision', checked: s.auto_provision }),
+        'Criar utilizadores no primeiro login (como técnicos, sem acesso a clientes até um administrador os atribuir)'),
+      check(h('input', { type: 'checkbox', name: 'enforce', checked: s.enforce }),
+        'Obrigar ao SSO (só os administradores podem continuar a entrar com password, como acesso de emergência)'))),
+  async (fd) => {
+    await api('PUT', '/api/org/sso', {
+      label: fd.get('label'), issuer: fd.get('issuer'), client_id: fd.get('client_id'),
+      client_secret: fd.get('client_secret') || undefined,
+      domains: String(fd.get('domains')).split(/[\s,;]+/).filter(Boolean),
+      enabled: fd.get('enabled') === 'on', auto_provision: fd.get('auto_provision') === 'on', enforce: fd.get('enforce') === 'on',
+    });
+    toast('Configuração de SSO guardada.');
+    render();
+  }, { wide: true });
+  return card('Login único (SSO)', [
+    h('div', { class: 'd-flex align-items-start gap-3 flex-wrap' },
+      h('div', { class: 'flex-fill' },
+        h('p', { class: 'text-secondary' }, 'Os utilizadores entram com a conta da empresa (Microsoft Entra ID, Google Workspace, Okta, Keycloak ou outro fornecedor OpenID Connect).'),
+        s.configured ? details([['Estado', status], ['Fornecedor', s.issuer], ['Domínios', s.domains.join(', ')],
+          ['Criar utilizadores', s.auto_provision ? 'Sim' : 'Não'], ['SSO obrigatório', s.enforce ? 'Sim' : 'Não']]) : status),
+      h('div', { class: 'btn-list' },
+        h('button', { class: 'primary', onclick: configure }, icon('key'), s.configured ? 'Alterar' : 'Configurar'),
+        s.configured ? h('button', { onclick: async () => {
+          const r = await api('POST', '/api/org/sso/test');
+          toast(r.ok ? `Ligação ao fornecedor OK (${r.issuer}).` : `Falhou: ${r.error}`, !r.ok);
+        } }, 'Testar ligação') : null,
+        s.configured ? h('button', { class: 'text-danger', onclick: async () => {
+          if (await confirmDialog('Remover SSO', 'Remover a configuração de login único? Os utilizadores voltam a entrar com password (quem não tiver password terá de a recuperar por email).', 'Remover')) {
+            await api('DELETE', '/api/org/sso'); toast('SSO removido.'); render();
+          }
+        } }, 'Remover') : null)),
+  ]);
 }
 
 // ======================================================================= plataforma
@@ -49,6 +152,13 @@ export async function viewPlatform() {
         h('td', { class: 'text-end' }, lim(o.usage.users, o.max_users)),
         h('td', { class: 'text-secondary' }, fmtDate(o.created_at)),
         h('td', { class: 'text-end text-nowrap' },
+          o.support_until && o.id !== ME.org_id ? [h('button', { class: 'link', title: `Autorizado até ${fmtDate(o.support_until)}`, onclick: async () => {
+            if (await confirmDialog('Entrar como suporte', `Entrar em "${o.name}" como administrador, durante no máximo 1 hora? A sessão atual termina e tudo fica na auditoria da organização.`, 'Entrar')) {
+              await api('POST', `/api/platform/orgs/${o.id}/support-session`);
+              location.hash = '#/';
+              location.reload();
+            }
+          } }, 'Entrar (suporte)'), ' · '] : null,
           h('button', { class: 'link', onclick: () => orgDialog(o) }, 'Editar'),
           o.id !== ME.org_id ? [' · ', h('button', { class: 'link text-danger', onclick: () => deleteOrgDialog(o) }, 'Eliminar')] : null))),
       'Sem organizações.')));

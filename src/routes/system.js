@@ -1,4 +1,5 @@
 'use strict';
+const crypto = require('node:crypto');
 /* Sistema: health check, estado da instalação, cópias de segurança e notificações por email. */
 const fs = require('node:fs');
 const os = require('node:os');
@@ -28,6 +29,36 @@ module.exports = function registerSystem(core) {
     try { dbOk = one('SELECT 1 AS ok').ok === 1; } catch { /* BD indisponível */ }
     if (!dbOk) ctx.status = 503;
     return { ok: dbOk, db: dbOk ? 'ok' : 'erro', version, uptime_s: Math.round((Date.now() - startedAt) / 1000) };
+  }, { public: true });
+
+  // ------------------------------------------------------------ métricas (Prometheus)
+  // Com CMDB_METRICS_TOKEN: GET /api/metrics com "Authorization: Bearer <token>". Sem token configurado, não existe.
+  add('GET', '/api/metrics', ({ req, res, ctx }) => {
+    const token = opts.metricsToken ?? process.env.CMDB_METRICS_TOKEN;
+    if (!token) fail(404, 'Rota inexistente');
+    const given = String(req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+    const a = crypto.createHash('sha256').update(given).digest();
+    const b = crypto.createHash('sha256').update(token).digest();
+    if (!crypto.timingSafeEqual(a, b)) fail(401, 'Token inválido');
+    const n = (sql) => one(sql).n;
+    let dbBytes = 0;
+    if (opts.dbFile && opts.dbFile !== ':memory:') {
+      for (const f of [opts.dbFile, `${opts.dbFile}-wal`]) { try { dbBytes += fs.statSync(f).size; } catch { /* sem ficheiro */ } }
+    }
+    const text = core.metrics.render([
+      { name: 'rizoma_organizations', help: 'Organizações por estado de faturação.', value: n("SELECT COUNT(*) n FROM organizations WHERE status = 'active'"), labels: { status: 'active' } },
+      { name: 'rizoma_organizations_suspended', help: 'Organizações suspensas.', value: n("SELECT COUNT(*) n FROM organizations WHERE status <> 'active'") },
+      { name: 'rizoma_organizations_read_only', help: 'Organizações em modo só de leitura (subscrição ou eliminação pedida).', value: n(`SELECT COUNT(*) n FROM organizations WHERE deletion_requested_at IS NOT NULL
+        OR billing_status IN ('canceled', 'unpaid', 'incomplete_expired')
+        OR (billing_status = 'trialing' AND stripe_subscription_id IS NULL AND trial_ends_at < strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`) },
+      { name: 'rizoma_users', help: 'Utilizadores ativos.', value: n('SELECT COUNT(*) n FROM users WHERE active = 1') },
+      { name: 'rizoma_cis', help: 'Ativos registados.', value: n('SELECT COUNT(*) n FROM cis') },
+      { name: 'rizoma_sessions', help: 'Sessões válidas.', value: one('SELECT COUNT(*) n FROM sessions WHERE expires_at > ?', Date.now()).n },
+      { name: 'rizoma_db_bytes', help: 'Tamanho da base de dados (com WAL).', value: dbBytes },
+    ]);
+    res.writeHead(200, { 'Content-Type': 'text/plain; version=0.0.4; charset=utf-8', 'Cache-Control': 'no-store' });
+    res.end(text);
+    ctx.raw = true;
   }, { public: true });
 
   // ------------------------------------------------------------ estado (administração)

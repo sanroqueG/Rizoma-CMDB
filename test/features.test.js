@@ -210,7 +210,7 @@ describe('SSO (OIDC)', () => {
   }
 
   test('configuração pública', async () => {
-    assert.deepEqual((await agent().get('/api/auth/config')).data, { oidc: { label: 'Microsoft' }, require_2fa: false, signup: false });
+    assert.deepEqual((await agent().get('/api/auth/config')).data, { oidc: { label: 'Microsoft' }, require_2fa: false, signup: false, org_sso: false, terms_url: null, privacy_url: null });
   });
 
   test('login SSO de utilizador registado (por email)', async () => {

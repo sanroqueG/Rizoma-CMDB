@@ -6,9 +6,22 @@ const crypto = require('node:crypto');
 const b64url = (buf) => Buffer.from(buf).toString('base64url');
 const rnd = (n) => b64url(crypto.randomBytes(n));
 
-function createOidc({ issuer, clientId, clientSecret, redirectUri, label, fetchFn = globalThis.fetch }) {
+/** Estado dos logins em curso em memória (só serve para uma instância; a app usa a BD). */
+function memoryPending() {
+  const m = new Map();
+  return {
+    put(state, v) {
+      const now = Date.now();
+      for (const [k, x] of m) if (x.exp < now) m.delete(k);
+      m.set(state, v);
+    },
+    take(state) { const v = m.get(state); m.delete(state); return v; },
+  };
+}
+
+/** pending: onde guardar { nonce, verifier, exp } entre o início e o callback ({ put, take }). */
+function createOidc({ issuer, clientId, clientSecret, redirectUri, label, fetchFn = globalThis.fetch, pending = memoryPending() }) {
   const base = issuer.replace(/\/+$/, '');
-  const pending = new Map(); // state → { nonce, verifier, exp }
   let discovery = null;
   let discoveryAt = 0;
   let jwks = null;
@@ -25,12 +38,10 @@ function createOidc({ issuer, clientId, clientSecret, redirectUri, label, fetchF
 
   async function start() {
     const d = await discover();
-    const now = Date.now();
-    for (const [k, v] of pending) if (v.exp < now) pending.delete(k);
     const state = rnd(24);
     const nonce = rnd(24);
     const verifier = rnd(32);
-    pending.set(state, { nonce, verifier, exp: now + 10 * 60e3 });
+    await pending.put(state, { nonce, verifier, exp: Date.now() + 10 * 60e3 });
     const u = new URL(d.authorization_endpoint);
     u.search = new URLSearchParams({
       response_type: 'code', client_id: clientId, redirect_uri: redirectUri, scope: 'openid profile email',
@@ -85,8 +96,7 @@ function createOidc({ issuer, clientId, clientSecret, redirectUri, label, fetchF
   }
 
   async function finish(code, state) {
-    const p = pending.get(state);
-    pending.delete(state);
+    const p = await pending.take(state);
     if (!p || p.exp < Date.now()) throw new Error('O pedido de login expirou. Tente novamente.');
     const d = await discover();
     const r = await fetchFn(d.token_endpoint, {
@@ -105,7 +115,7 @@ function createOidc({ issuer, clientId, clientSecret, redirectUri, label, fetchF
     return { claims, identities };
   }
 
-  return { label: label || 'SSO', start, finish };
+  return { label: label || 'SSO', start, finish, discover };
 }
 
-module.exports = { createOidc };
+module.exports = { createOidc, memoryPending };

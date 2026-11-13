@@ -15,7 +15,7 @@ module.exports = function register(core) {
   } = core;
 
   // =========================================================== utilizadores
-  function readUserInput(body, partial, currentUsername) {
+  function readUserInput(body, partial, currentUsername, orgId) {
     const out = {};
     if (!partial || 'username' in body) {
       out.username = reqStr(body.username, 'Utilizador', 60);
@@ -34,8 +34,8 @@ module.exports = function register(core) {
       checkPassword(String(body.password), out.username || currentUsername);
       out.password_hash = hashPassword(String(body.password));
     } else if (!partial) {
-      // Com SSO ativo é possível criar contas só-SSO (password aleatória, desconhecida)
-      if (oidc) out.password_hash = hashPassword(newToken());
+      // Com SSO ativo (global ou da organização) é possível criar contas só-SSO (password aleatória, desconhecida)
+      if (oidc || core.orgHasSso(orgId)) out.password_hash = hashPassword(newToken());
       else fail(400, 'Password é obrigatória');
     }
     return out;
@@ -64,7 +64,7 @@ module.exports = function register(core) {
 
   add('POST', '/api/users', ({ user, body }) => {
     assertAdmin(user);
-    const d = readUserInput(body, false);
+    const d = readUserInput(body, false, undefined, user.org_id);
     if (d.role === 'client' && !d.client_id) fail(400, 'Um utilizador do tipo cliente tem de estar associado a um cliente');
     if (d.role !== 'client') d.client_id = null;
     assertOrgClient(user, d.client_id);

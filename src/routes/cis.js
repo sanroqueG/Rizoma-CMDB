@@ -16,10 +16,10 @@ module.exports = function register(core) {
   } = core;
 
   // =========================================================== metadados
-  add('GET', '/api/meta', () => ({
+  add('GET', '/api/meta', ({ user }) => ({
     statuses: STATUSES, criticalities: CRITICALITIES, environments: ENVIRONMENTS, relTypes: REL_TYPES, roles: ROLES,
-    types: all('SELECT * FROM ci_types ORDER BY category, name').map((t) => ({ ...t, fields: JSON.parse(t.fields) })),
-    sso: !!oidc,
+    types: core.typesFor(user.org_id),
+    sso: !!oidc || core.orgHasSso(user.org_id),
     contractKinds: ['licenca', 'suporte', 'manutencao', 'subscricao', 'garantia', 'outsourcing', 'outro'],
     contractStatuses: ['ativo', 'terminado', 'cancelado'],
     billing: ['mensal', 'trimestral', 'anual', 'unico'],
@@ -57,7 +57,7 @@ module.exports = function register(core) {
 
   // =========================================================== ativos (CIs)
   function checkCiRefs(d, clientId) {
-    if (d.type_id && !one('SELECT 1 FROM ci_types WHERE id = ?', d.type_id)) fail(400, 'Tipo inválido');
+    if (d.type_id && !core.typeVisible(d.type_id, one('SELECT org_id FROM clients WHERE id = ?', clientId)?.org_id)) fail(400, 'Tipo inválido');
     if (d.site_id && !one('SELECT 1 FROM sites WHERE id = ? AND client_id = ?', d.site_id, clientId)) {
       fail(400, 'O local não pertence a este cliente');
     }

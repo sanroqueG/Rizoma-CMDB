@@ -7,7 +7,7 @@ import { TABLER_ICONS } from './icons.js';
 // ======================================================================= estado
 export let ME = null;
 export let META = null;
-export let AUTH = { oidc: null, require_2fa: false };
+export let AUTH = { oidc: null, require_2fa: false, signup: false, org_sso: false, terms_url: null, privacy_url: null };
 export let shell = null;
 export let main = null;
 
@@ -28,7 +28,7 @@ export const L = {
   },
   entity: {
     ci: 'Ativo', client: 'Cliente', site: 'Local', user: 'Utilizador', token: 'Token', relationship: 'Relação', connector: 'Conector cloud',
-    contract: 'Contrato', ticket: 'Ticket', system: 'Sistema',
+    contract: 'Contrato', ticket: 'Ticket', system: 'Sistema', ci_type: 'Tipo de ativo', organization: 'Organização',
   },
   kind: { licenca: 'Licença', suporte: 'Suporte', manutencao: 'Manutenção', subscricao: 'Subscrição', garantia: 'Garantia', outsourcing: 'Outsourcing', outro: 'Outro' },
   cstatus: { ativo: 'Ativo', terminado: 'Terminado', cancelado: 'Cancelado' },

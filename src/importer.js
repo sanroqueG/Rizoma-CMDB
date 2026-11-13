@@ -84,7 +84,7 @@ function createImporter({ one, all, run, audit, readCiInput }) {
     if (!Object.values(columns).includes('name') && !Object.values(columns).includes('hostname')) {
       throw Object.assign(new Error('O ficheiro precisa de uma coluna "Nome" (ou "Hostname")'), { status: 400 });
     }
-    const types = all('SELECT id, name FROM ci_types');
+    const types = all('SELECT id, name FROM ci_types WHERE org_id IS NULL OR org_id = (SELECT org_id FROM clients WHERE id = ?)', clientId);
     const typeByNorm = new Map(types.map((t) => [norm(t.name), t.id]));
     const siteCache = new Map(all('SELECT id, name FROM sites WHERE client_id = ?', clientId).map((s) => [norm(s.name), s.id]));
     const defaultType = typeByNorm.get(norm('Posto de trabalho'));

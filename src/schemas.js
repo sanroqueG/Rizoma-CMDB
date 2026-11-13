@@ -99,6 +99,7 @@ const BODY_SCHEMAS = {
     username: str({ max: 60, required: true, label: 'Utilizador' }),
     email: anyOf([email({ label: 'Email' }), str({ max: 0 })]),
     password: str({ max: 200, truncate: false, required: true, label: 'Password' }),
+    accept_terms: bool(),
   }),
   'PUT /api/org': obj({ name: str({ max: 120, required: true, label: 'Nome da organização' }) }),
   'POST /api/platform/orgs': obj({ name: str({ max: 120, required: true, label: 'Nome da organização' }), plan: text(40), ...orgLimits, ...orgAdmin }),

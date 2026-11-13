@@ -7,6 +7,7 @@ const { createApp } = require('./src/app');
 const { loadSecretKey, verifyPassword } = require('./src/auth');
 const { DEFAULT_ADMIN_PASSWORD } = require('./src/passwords');
 const { createBackups } = require('./src/backup');
+const { uploadBackup } = require('./src/offsite');
 const { createMailer, smtpConfigFromEnv } = require('./src/mailer');
 const { createLogger, withRequestLog } = require('./src/log');
 
@@ -76,13 +77,30 @@ async function runDueSyncs() {
       log.error('Sincronização de conector falhou', { conector: id, err: e });
     }
   }
+  for (const id of app.dueRmm(SYNC_HOURS)) {
+    try {
+      const r = await app.syncRmm(id, 'agendamento');
+      log.info('Sincronização RMM', { ligacao: id, estado: r.status });
+    } catch (e) {
+      log.error('Sincronização RMM falhou', { ligacao: id, err: e });
+    }
+  }
 }
 async function runDueBackup() {
   if (!backups || backups.hoursSinceLast() < BACKUP_HOURS) return;
   try {
     const r = await app.runJob('backup', { dir: backups.dir, keep: backups.keep, keyFile: backups.keyFile });
     log.info('Cópia de segurança criada', { ficheiro: r.file, bytes: r.size, ms: r.ms, removidas: r.removed.length });
+    app.metrics.inc('rizoma_backups_total', { result: 'ok' });
+    if (env.CMDB_BACKUP_UPLOAD_CMD) {
+      // Cópia para fora do servidor (ver src/offsite.js)
+      const up = await uploadBackup(env.CMDB_BACKUP_UPLOAD_CMD, { file: r.file, keyFile: backups.keyFile });
+      app.metrics.inc('rizoma_backup_uploads_total', { result: up.ok ? 'ok' : 'erro' });
+      if (up.ok) log.info('Cópia enviada para fora do servidor', { ficheiro: r.file, ms: up.ms });
+      else log.error('Envio da cópia para fora do servidor falhou', { codigo: up.code, saida: up.output, err: new Error('upload') });
+    }
   } catch (e) {
+    app.metrics.inc('rizoma_backups_total', { result: 'erro' });
     log.error('Cópia de segurança falhou', { err: e });
   }
 }
@@ -108,6 +126,14 @@ function runAuditRetention() {
 async function hourly() {
   const { locks } = app.state;
   await locks.withLock('scheduler:audit', 10 * 60e3, async () => runAuditRetention());
+  await locks.withLock('scheduler:org-deletion', 10 * 60e3, async () => {
+    try {
+      const n = app.purgeDeletedOrgs();
+      if (n) log.info('Organizações eliminadas a pedido', { organizacoes: n });
+    } catch (e) {
+      log.error('Eliminação de organizações falhou', { err: e });
+    }
+  });
   await locks.withLock('scheduler:backup', 60 * 60e3, runDueBackup);
   await runDueSyncs();
   await locks.withLock('scheduler:digest', 30 * 60e3, runDueDigest);

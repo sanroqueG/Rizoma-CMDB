@@ -114,6 +114,142 @@ const MIGRATIONS = [
       addColumn(db, 'api_tokens', 'scopes', "TEXT NOT NULL DEFAULT 'ingest,tickets'");
     },
   },
+  {
+    id: 6,
+    name: 'recuperação de password, convites e verificação de email',
+    up(db, { addColumn }) {
+      // Tokens de uso único enviados por email: guarda-se só o hash
+      db.exec(`CREATE TABLE user_tokens (
+        token_hash TEXT PRIMARY KEY,
+        user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        purpose    TEXT NOT NULL CHECK (purpose IN ('reset', 'invite', 'verify')),
+        expires_at INTEGER NOT NULL,
+        used_at    INTEGER,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+      CREATE INDEX user_tokens_user ON user_tokens(user_id, purpose);`);
+      addColumn(db, 'users', 'email_verified_at', 'TEXT');
+      addColumn(db, 'users', 'invite_pending', 'INTEGER NOT NULL DEFAULT 0');
+      // Contas que já existiam são consideradas verificadas
+      db.exec("UPDATE users SET email_verified_at = datetime('now') WHERE email IS NOT NULL");
+    },
+  },
+  {
+    id: 7,
+    name: 'SSO por organização',
+    up(db) {
+      db.exec(`CREATE TABLE org_sso (
+        org_id         INTEGER PRIMARY KEY REFERENCES organizations(id) ON DELETE CASCADE,
+        enabled        INTEGER NOT NULL DEFAULT 1,
+        label          TEXT,
+        issuer         TEXT NOT NULL,
+        client_id      TEXT NOT NULL,
+        client_secret  TEXT,
+        auto_provision INTEGER NOT NULL DEFAULT 0,
+        enforce        INTEGER NOT NULL DEFAULT 0,
+        updated_at     TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+      -- Cada domínio de email pertence a uma só organização: é por ele que o login encontra o fornecedor
+      CREATE TABLE org_sso_domains (
+        domain TEXT PRIMARY KEY,
+        org_id INTEGER NOT NULL REFERENCES organizations(id) ON DELETE CASCADE
+      );
+      CREATE INDEX org_sso_domains_org ON org_sso_domains(org_id);
+      -- Logins SSO em curso (partilhado entre instâncias); org_id NULL = SSO global da plataforma
+      CREATE TABLE oidc_pending (
+        state      TEXT PRIMARY KEY,
+        org_id     INTEGER REFERENCES organizations(id) ON DELETE CASCADE,
+        nonce      TEXT NOT NULL,
+        verifier   TEXT NOT NULL,
+        expires_at INTEGER NOT NULL
+      );`);
+    },
+  },
+  {
+    id: 8,
+    name: 'tipos de ativo por organização',
+    rebuild: true,
+    up(db) {
+      // org_id NULL = tipo base, comum a todas as organizações; nomes únicos dentro de cada organização
+      db.exec(`CREATE TABLE ci_types_new (
+        id       INTEGER PRIMARY KEY,
+        org_id   INTEGER REFERENCES organizations(id) ON DELETE CASCADE,
+        name     TEXT NOT NULL COLLATE NOCASE,
+        category TEXT NOT NULL,
+        fields   TEXT NOT NULL DEFAULT '[]'
+      );
+      INSERT INTO ci_types_new (id, org_id, name, category, fields) SELECT id, NULL, name, category, fields FROM ci_types;
+      DROP TABLE ci_types;
+      ALTER TABLE ci_types_new RENAME TO ci_types;
+      CREATE UNIQUE INDEX ci_types_org_name ON ci_types(COALESCE(org_id, 0), name);`);
+    },
+  },
+  {
+    id: 9,
+    name: 'subscrições (Stripe)',
+    up(db, { addColumn }) {
+      // billing_status NULL = organização não sujeita a faturação (anterior, ou gerida à mão pela plataforma)
+      addColumn(db, 'organizations', 'billing_status', 'TEXT');
+      addColumn(db, 'organizations', 'trial_ends_at', 'TEXT');
+      addColumn(db, 'organizations', 'stripe_customer_id', 'TEXT');
+      addColumn(db, 'organizations', 'stripe_subscription_id', 'TEXT');
+      addColumn(db, 'organizations', 'current_period_end', 'TEXT');
+      addColumn(db, 'organizations', 'cancel_at', 'TEXT');
+      db.exec(`CREATE INDEX organizations_stripe_customer ON organizations(stripe_customer_id);
+      CREATE TABLE stripe_events (
+        id          TEXT PRIMARY KEY,
+        type        TEXT NOT NULL,
+        received_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );`);
+    },
+  },
+  {
+    id: 10,
+    name: 'RGPD: eliminação a pedido e aceitação dos termos',
+    up(db, { addColumn }) {
+      addColumn(db, 'organizations', 'deletion_requested_at', 'TEXT');
+      addColumn(db, 'organizations', 'deletion_requested_by', 'TEXT');
+      addColumn(db, 'users', 'terms_accepted_at', 'TEXT');
+      addColumn(db, 'users', 'terms_version', 'TEXT');
+    },
+  },
+  {
+    id: 11,
+    name: 'acesso de suporte autorizado pela organização',
+    up(db, { addColumn }) {
+      addColumn(db, 'organizations', 'support_access_until', 'TEXT');
+      // Sessão de suporte: utilizador da plataforma que está a agir como administrador da organização
+      addColumn(db, 'sessions', 'impersonator', 'TEXT');
+    },
+  },
+  {
+    id: 12,
+    name: 'integração RMM (NinjaOne)',
+    up(db) {
+      db.exec(`CREATE TABLE rmm_connections (
+        id            INTEGER PRIMARY KEY,
+        org_id        INTEGER NOT NULL UNIQUE REFERENCES organizations(id) ON DELETE CASCADE,
+        provider      TEXT NOT NULL DEFAULT 'ninjaone',
+        region        TEXT NOT NULL,
+        api_client_id TEXT NOT NULL,
+        secret_enc    TEXT NOT NULL,
+        enabled       INTEGER NOT NULL DEFAULT 1,
+        last_sync     TEXT,
+        last_status   TEXT,
+        last_report   TEXT,
+        created_at    TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+      -- Organização do RMM → cliente do Rizoma (client_id NULL = ainda por associar; os dispositivos são ignorados)
+      CREATE TABLE rmm_client_map (
+        connection_id   INTEGER NOT NULL REFERENCES rmm_connections(id) ON DELETE CASCADE,
+        remote_org_id   TEXT NOT NULL,
+        remote_org_name TEXT,
+        client_id       INTEGER REFERENCES clients(id) ON DELETE SET NULL,
+        devices         INTEGER,
+        PRIMARY KEY (connection_id, remote_org_id)
+      );`);
+    },
+  },
 ];
 
 module.exports = { MIGRATIONS };

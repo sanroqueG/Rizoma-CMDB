@@ -26,7 +26,8 @@ jobs:
         # O Chrome já vem instalado nos runners do GitHub: os testes de browser (test/e2e.test.js) correm também
         env:
           CMDB_BROWSER: /usr/bin/google-chrome
-        run: node --test test/
+        # spec no log; e cada falha também como anotação do GitHub (visível na API sem autenticação)
+        run: node --test --test-reporter=spec --test-reporter-destination=stdout --test-reporter=./test/gh-annotations.mjs --test-reporter-destination=stdout test/
       - name: Verificação de tipos (JSDoc + TypeScript, sem build)
         # Ferramentas só de verificação: não passam a ser dependências da aplicação
         run: |

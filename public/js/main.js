@@ -1,13 +1,15 @@
 /* Layout, router, atalhos de teclado, palete de pesquisa e arranque. Carregado depois das vistas. */
-import { renderLogin, viewAccount } from './auth.js';
+import { renderLogin, viewAccount, renderPublicPage } from './auth.js';
 import { AUTH, BRAND, GET, L, ME, api, brandLogo, canWrite, fmtDate, h, icon, isAdmin, main, openDialog, select, setAUTH, setME, setMETA, setMain, setShell, shell } from './core.js';
-import { viewAudit, viewUsers } from './views/admin.js';
+import { viewAudit, viewUsers, viewTypes } from './views/admin.js';
 import { viewCi, viewCiForm, viewCis } from './views/cis.js';
 import { viewClient, viewClientMap, viewClients } from './views/clients.js';
 import { viewContract, viewContractForm, viewContracts } from './views/contracts.js';
 import { viewDashboard } from './views/dashboard.js';
 import { viewImport } from './views/import.js';
 import { viewOrganization, viewPlatform } from './views/orgs.js';
+import { billingBanner, viewBilling } from './views/billing.js';
+import { viewIntegrations } from './views/integrations.js';
 import { viewClientReport } from './views/reports.js';
 import { viewSystem } from './views/system.js';
 
@@ -23,7 +25,10 @@ export function buildShell() {
     isAdmin() && ['Administração'],
     isAdmin() && ['#/utilizadores', 'users', 'Utilizadores', 'G U'],
     isAdmin() && ['#/auditoria', 'audit', 'Auditoria', 'G L'],
+    isAdmin() && ['#/tipos', 'assets', 'Tipos de ativo', 'G T'],
+    isAdmin() && ['#/integracoes', 'cloud', 'Integrações', 'G N'],
     isAdmin() && ['#/organizacao', 'clients', 'Organização', 'G O'],
+    isAdmin() && ME.billing && ['#/subscricao', 'key', 'Subscrição', 'G B'],
     isAdmin() && ['#/sistema', 'system', 'Sistema', 'G S'],
     ME.is_platform && ['#/plataforma', 'lock', 'Plataforma', 'G F'],
   ].filter(Boolean);
@@ -84,7 +89,7 @@ export function pageHead(title, sub, ...actions) {
 export function setPage(...children) {
   const kids = children.flat().filter(Boolean);
   const head = kids[0] && kids[0].classList && kids[0].classList.contains('page-header') ? kids.shift() : null;
-  main.replaceChildren(...[head, h('div', { class: 'page-body' }, h('div', { class: 'container-xl' }, h('div', { class: 'page-stack' }, kids)))].filter(Boolean));
+  main.replaceChildren(...[head, h('div', { class: 'page-body' }, h('div', { class: 'container-xl' }, h('div', { class: 'page-stack' }, billingBanner(), kids)))].filter(Boolean));
 }
 
 // ======================================================================= router
@@ -101,6 +106,9 @@ export const ROUTES = [
   [/^\/contratos\/(\d+)\/editar$/, (id) => viewContractForm(id)],
   [/^\/sistema$/, viewSystem],
   [/^\/organizacao$/, viewOrganization],
+  [/^\/tipos$/, viewTypes],
+  [/^\/integracoes$/, viewIntegrations],
+  [/^\/subscricao$/, viewBilling],
   [/^\/plataforma$/, viewPlatform],
   [/^\/importar$/, viewImport],
   [/^\/ativos$/, viewCis],
@@ -163,7 +171,7 @@ export function moveRowSel(dir) {
   return true;
 }
 
-export const GO = { d: '#/', a: '#/ativos', c: '#/clientes', k: '#/contratos', i: '#/importar', u: '#/utilizadores', l: '#/auditoria', s: '#/sistema', o: '#/organizacao', f: '#/plataforma', p: '#/conta' };
+export const GO = { d: '#/', a: '#/ativos', c: '#/clientes', k: '#/contratos', i: '#/importar', u: '#/utilizadores', l: '#/auditoria', s: '#/sistema', o: '#/organizacao', t: '#/tipos', n: '#/integracoes', b: '#/subscricao', f: '#/plataforma', p: '#/conta' };
 export let gPressedAt = 0;
 document.addEventListener('keydown', (e) => {
   if (!ME || !shell) return;
@@ -286,7 +294,9 @@ export function openPalette() {
 // ======================================================================= arranque
 (async function boot() {
   setAUTH(await fetch('/api/auth/config').then((x) => x.json()).catch(() => AUTH));
-  const { query } = parseHash();
+  const { path, query } = parseHash();
+  // Ligações recebidas por email (redefinir password, convite, verificar email) funcionam sem sessão
+  if (await renderPublicPage(path, query)) return;
   const ssoError = query.get('sso_erro');
   if (ssoError) history.replaceState(null, '', '#/');
   const r = await fetch('/api/me', { credentials: 'same-origin' }).catch(() => null);

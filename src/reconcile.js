@@ -33,7 +33,7 @@ function createReconciler({ one, all, run, audit }) {
     if (!name) return null;
     const key = String(name).toLowerCase();
     if (!typeCache.has(key)) {
-      const r = one('SELECT id FROM ci_types WHERE name = ?', String(name));
+      const r = one('SELECT id FROM ci_types WHERE name = ? AND org_id IS NULL', String(name));
       typeCache.set(key, r ? r.id : null);
     }
     return typeCache.get(key);

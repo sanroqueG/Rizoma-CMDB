@@ -23,13 +23,15 @@ module.exports = function register(core) {
     const username = String(body.username || '').trim();
     const key = `login:${req.socket.remoteAddress}|${username.toLowerCase()}`;
     if (state.throttle.blocked(key, LOGIN_MAX_FAILS, LOGIN_WINDOW_MS)) fail(429, 'Demasiadas tentativas. Tente novamente mais tarde.');
-    const u = one('SELECT * FROM users WHERE username = ? AND active = 1', username);
+    // Convites por aceitar não entram com password (a password é definida pelo próprio ao aceitar)
+    const u = one('SELECT * FROM users WHERE username = ? AND active = 1 AND invite_pending = 0', username);
     if (!u || !verifyPassword(String(body.password || ''), u.password_hash)) {
       state.throttle.hit(key, LOGIN_WINDOW_MS);
       fail(401, 'Credenciais inválidas');
     }
     state.throttle.reset(key);
     assertOrgActive(u);
+    if (core.ssoEnforced(u)) fail(403, 'A sua organização exige o login único (SSO). Use "Entrar com SSO da organização".');
     run('DELETE FROM sessions WHERE expires_at < ?', Date.now());
     if (u.totp_enabled) {
       // 2.º fator: devolve um token temporário; a sessão só é criada após o código TOTP
@@ -87,6 +89,8 @@ module.exports = function register(core) {
   // ---- configuração de autenticação (pública, para o ecrã de login)
   add('GET', '/api/auth/config', () => ({
     oidc: oidc ? { label: oidc.label } : null, require_2fa: requireMfa, signup: !!core.signupEnabled,
+    org_sso: !!one('SELECT 1 FROM org_sso WHERE enabled = 1 LIMIT 1'),
+    terms_url: core.legal.termsUrl, privacy_url: core.legal.privacyUrl,
   }), { public: true });
 
   // ---- SSO (OpenID Connect)
@@ -97,16 +101,22 @@ module.exports = function register(core) {
     redirect(res, ctx, url);
   }, { public: true });
 
+  // Callback comum ao SSO global e ao SSO de cada organização (o login pendente indica qual)
   add('GET', '/api/auth/oidc/callback', async ({ req, res, query, ctx }) => {
-    if (!oidc) fail(404, 'SSO não configurado');
     addCookie(res, `oidc_state=; HttpOnly; SameSite=Lax; Path=/api/auth/oidc; Max-Age=0${secureCookie ? '; Secure' : ''}`);
     try {
       if (query.error) throw new Error(query.error_description || query.error);
       if (!query.state || query.state !== parseCookies(req).oidc_state) throw new Error('Pedido de login inválido. Tente novamente.');
-      const { identities } = await oidc.finish(query.code, query.state);
+      const pend = one('SELECT org_id FROM oidc_pending WHERE state = ?', String(query.state));
+      const orgId = pend ? pend.org_id : null;
+      const client = orgId ? core.orgSsoClient(orgId, req) : oidc;
+      if (!client) throw new Error('O login único não está configurado.');
+      const { identities, claims } = await client.finish(query.code, query.state);
       if (!identities.length) throw new Error('O fornecedor de identidade não devolveu o email do utilizador');
       const ph = identities.map(() => '?').join(',');
-      const u = one(`SELECT * FROM users WHERE active = 1 AND (lower(email) IN (${ph}) OR lower(username) IN (${ph}))
+      // SSO de uma organização: só utilizadores dessa organização (ou criados nela, se permitido)
+      const u = orgId ? core.orgSsoUser(orgId, identities, claims)
+        : one(`SELECT * FROM users WHERE active = 1 AND (lower(email) IN (${ph}) OR lower(username) IN (${ph}))
         ORDER BY id LIMIT 1`, ...identities, ...identities);
       if (!u) {
         audit('user', null, null, identities[0], identities[0], 'login_negado', { motivo: 'conta SSO sem utilizador no Rizoma' });

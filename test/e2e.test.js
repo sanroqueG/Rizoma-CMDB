@@ -118,8 +118,10 @@ before(async () => {
   await a.post(`/api/cis/${srv}/tickets`, { system: 'GLPI', external_id: '900', title: 'Disco cheio' });
 
   profile = fs.mkdtempSync(path.join(os.tmpdir(), 'cmdb-e2e-'));
+  // Em Linux (CI): os runners Ubuntu 24 não permitem o sandbox do Chrome; /dev/shm é pequeno nos contentores
+  const linuxArgs = process.platform === 'linux' ? ['--no-sandbox', '--disable-dev-shm-usage'] : [];
   proc = spawn(BROWSER, ['--headless=new', '--remote-debugging-port=0', `--user-data-dir=${profile}`, '--no-first-run',
-    '--no-default-browser-check', '--disable-extensions', '--disable-gpu', '--window-size=1400,1000', 'about:blank'], { stdio: 'ignore' });
+    '--no-default-browser-check', '--disable-extensions', '--disable-gpu', '--window-size=1400,1000', ...linuxArgs, 'about:blank'], { stdio: 'ignore' });
   const portFile = path.join(profile, 'DevToolsActivePort');
   const until = Date.now() + 30000;
   while (!fs.existsSync(portFile) || !fs.readFileSync(portFile, 'utf8').includes('\n')) {
@@ -172,6 +174,7 @@ test('todas as páginas abrem sem erros', { skip: SKIP, timeout: 300000 }, async
     ['#/contratos/1/editar', /Editar/], ['#/contratos/novo', /Novo contrato/], ['#/ativos/1', /SRV-E2E/], ['#/ativos/1/editar', /Editar/],
     ['#/ativos/novo', /Novo ativo/], ['#/importar', /Importar/], ['#/utilizadores', /Utilizadores/], ['#/auditoria', /Auditoria/],
     ['#/sistema', /Sistema/], ['#/organizacao', /Organização/], ['#/plataforma', /Plataforma/], ['#/conta', /A minha conta/],
+    ['#/tipos', /Tipos de ativo/], ['#/subscricao', /Subscrição/], ['#/integracoes', /Integrações/],
   ];
   for (const [hash, h1] of pages) await go(hash, h1);
   assert.deepEqual(errors, [], 'sem exceções JavaScript');
