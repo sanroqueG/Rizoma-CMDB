@@ -1,0 +1,156 @@
+{
+  "v": 3,
+  "layout": "files",
+  "createdOnFiles": {
+    "v": 1,
+    "at": "2026-11-13T11:40:00Z"
+  },
+  "title": "Rizoma",
+  "namespace": "Rizoma",
+  "libraries": [],
+  "sections": {},
+  "groups": [
+    "Logos",
+    "Icons"
+  ],
+  "assetGroups": {
+    "Logos": {
+      "name": "Logos",
+      "tile": "l",
+      "order": [
+        "rizoma-logotipo.svg",
+        "rizoma-logotipo-negativo.svg",
+        "rizoma-simbolo.svg",
+        "rizoma-simbolo-mono.svg"
+      ],
+      "files": {
+        "rizoma-logotipo.svg": {
+          "name": "rizoma-logotipo.svg",
+          "blob": "8f5ae029358b67300e9bbfde9b8d43f8",
+          "size": 3762,
+          "type": "image/svg+xml"
+        },
+        "rizoma-logotipo-negativo.svg": {
+          "name": "rizoma-logotipo-negativo.svg",
+          "blob": "53b525db244750c8388677cbd5aaf99f",
+          "size": 3762,
+          "type": "image/svg+xml"
+        },
+        "rizoma-simbolo.svg": {
+          "name": "rizoma-simbolo.svg",
+          "blob": "5c07f07afce1ce96134c554a4b30e32f",
+          "size": 475,
+          "type": "image/svg+xml"
+        },
+        "rizoma-simbolo-mono.svg": {
+          "name": "rizoma-simbolo-mono.svg",
+          "blob": "dd1474f891a9da688781bb44947b1bad",
+          "size": 398,
+          "type": "image/svg+xml"
+        }
+      }
+    },
+    "Icons": {
+      "name": "Icons",
+      "tile": "s",
+      "order": [
+        "painel.svg",
+        "ativos.svg",
+        "clientes.svg",
+        "contratos.svg",
+        "importar.svg",
+        "utilizadores.svg",
+        "auditoria.svg",
+        "sistema.svg",
+        "pesquisar.svg",
+        "mapa.svg",
+        "ticket.svg",
+        "alerta.svg"
+      ],
+      "files": {
+        "painel.svg": {
+          "name": "painel.svg",
+          "blob": "bbd2fc4eb1cc47c593a74b7f742b5899",
+          "size": 531,
+          "type": "image/svg+xml"
+        },
+        "ativos.svg": {
+          "name": "ativos.svg",
+          "blob": "849e958952a0c7196bf4073897214de7",
+          "size": 460,
+          "type": "image/svg+xml"
+        },
+        "clientes.svg": {
+          "name": "clientes.svg",
+          "blob": "f4821546836c3406152884d45ff39ee4",
+          "size": 412,
+          "type": "image/svg+xml"
+        },
+        "contratos.svg": {
+          "name": "contratos.svg",
+          "blob": "a8648748e9c05d0116fd6935dba62aee",
+          "size": 377,
+          "type": "image/svg+xml"
+        },
+        "importar.svg": {
+          "name": "importar.svg",
+          "blob": "6ed4166f7f28f185f778c0a202d1d802",
+          "size": 295,
+          "type": "image/svg+xml"
+        },
+        "utilizadores.svg": {
+          "name": "utilizadores.svg",
+          "blob": "1264d3557ac18886319374653a1b88d9",
+          "size": 363,
+          "type": "image/svg+xml"
+        },
+        "auditoria.svg": {
+          "name": "auditoria.svg",
+          "blob": "9cd82447b8ad340dec4605c9e43427df",
+          "size": 242,
+          "type": "image/svg+xml"
+        },
+        "sistema.svg": {
+          "name": "sistema.svg",
+          "blob": "44870b270daba453d2234f92318df3f2",
+          "size": 752,
+          "type": "image/svg+xml"
+        },
+        "pesquisar.svg": {
+          "name": "pesquisar.svg",
+          "blob": "dae5c57984a4c9b5adec12bd7aacd10f",
+          "size": 249,
+          "type": "image/svg+xml"
+        },
+        "mapa.svg": {
+          "name": "mapa.svg",
+          "blob": "83fb861b02b448c6fbedb1ed7b2d3390",
+          "size": 696,
+          "type": "image/svg+xml"
+        },
+        "ticket.svg": {
+          "name": "ticket.svg",
+          "blob": "58f3ea8f95b4b665336eacb1600be065",
+          "size": 370,
+          "type": "image/svg+xml"
+        },
+        "alerta.svg": {
+          "name": "alerta.svg",
+          "blob": "41f040d4494b1e808ac18e8d5f8235bd",
+          "size": 367,
+          "type": "image/svg+xml"
+        }
+      }
+    }
+  },
+  "blobs": {},
+  "docs": {
+    "sections": []
+  },
+  "lastChange": {
+    "by": "Gonçalo",
+    "at": "2026-11-13T11:51:28Z",
+    "via": "Claude Code",
+    "note": "Rizoma: nova marca e base Tabler (substitui o Prumo)."
+  }
+}

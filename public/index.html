@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Rizoma</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <!-- Estrutura gráfica: Tabler 1.4.0 (MIT) — ver vendor/tabler/LICENSE -->
+  <link rel="stylesheet" href="vendor/tabler/tabler.min.css">
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <div id="app"></div>
+  <div id="toasts" aria-live="polite"></div>
+  <script src="js/theme.js"></script>
+  <script src="qr.js"></script>
+  <script src="files.js"></script>
+  <script src="graph.js"></script>
+  <!-- Interface em ES modules nativos (sem build): main.js importa o núcleo e as vistas. -->
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

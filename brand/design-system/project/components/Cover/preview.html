@@ -1,0 +1,52 @@
+<!-- @dsCard height=288 -->
+<!doctype html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<title>Rizoma</title>
+<style>
+  html, body { margin: 0; height: 100%; }
+  body { background: var(--body-bg); color: var(--text); font-family: var(--font-sans); overflow: hidden; }
+  .cover { position: relative; height: 288px; overflow: hidden; }
+  .art { position: absolute; top: 0; left: 480px; width: 480px; height: 288px; overflow: hidden; }
+  .art svg { display: block; width: 480px; height: 288px; }
+  .brand { fill: var(--primary); rx: var(--radius-lg); }
+  .deep { fill: var(--sidebar); }
+  .tint { fill: var(--border); rx: var(--radius-lg); }
+  .signal { fill: var(--warning); rx: var(--radius); }
+  .root { fill: none; stroke: var(--on-primary); stroke-width: 6; stroke-linecap: round; stroke-linejoin: round; }
+  .node { fill: var(--on-primary); }
+  .words { position: absolute; left: 48px; bottom: 48px; max-width: 440px; }
+  .name { margin: 0; font-size: 112px; line-height: .92; font-weight: 700; letter-spacing: -.035em; color: var(--text); }
+  .tagline { margin: 8px 0 0 4px; font-size: 14px; line-height: 20px; color: var(--text-secondary); }
+</style>
+</head>
+<body>
+<div class="cover">
+<div class="art" aria-hidden="true">
+<svg viewBox="0 0 480 288" width="480" height="288">
+<!--
+  blocks      primary 192×192 (a cor da marca, o maior bloco) · sidebar 192×288 sangrando em cima, em baixo e à direita · border 144×96 (tom de alívio) · warning 48×48 uma vez (só significa "a vencer") — ≈38% de 960×288
+  arrangement uma laje escura à direita com satélites, como a barra lateral ao lado do conteúdo na aplicação
+  pattern     o próprio rizoma do logótipo (caule, rebentos com nó, raízes) em on-primary, cortado pelos blocos: a marca descreve-se como "uma raiz que cresce em rede"
+  scales      lados em múltiplos de space-5 (32px) e space-6 (48px) · cantos radius-lg e radius · traço de 6px (o do símbolo, à escala) · nós r=12
+-->
+<rect class="tint" x="0" y="192" width="144" height="96"/>
+<rect class="brand" x="48" y="48" width="192" height="192"/>
+<rect class="deep" x="288" y="0" width="192" height="288"/>
+<rect class="signal" x="240" y="240" width="48" height="48"/>
+<path class="root" d="M72 156h144M96 156v-56M160 156l26-58M124 156l-14 44M190 156l14 40"/>
+<circle class="node" cx="96" cy="94" r="12"/>
+<circle class="node" cx="189" cy="92" r="12"/>
+<path class="root" d="M288 156h120M336 156v-64M384 156l22-48M360 156l-12 52M420 156l18 38"/>
+<circle class="node" cx="336" cy="86" r="12"/>
+<circle class="node" cx="409" cy="102" r="12"/>
+</svg>
+</div>
+<div class="words">
+<h1 class="name">Rizoma</h1>
+<p class="tagline">Toda a infraestrutura, ligada.</p>
+</div>
+</div>
+</body>
+</html>

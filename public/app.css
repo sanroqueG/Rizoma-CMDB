@@ -1,0 +1,134 @@
+/* Rizoma — complementos ao Tabler (https://tabler.io, MIT).
+   A estrutura gráfica vem do Tabler; aqui ficam só a cor da marca e o que o Tabler não traz
+   (mapa de relações, pesquisa global, <dialog> nativo com aspeto de modal, impressão). */
+
+/* ---------------------------------------------------------------- tipo de letra: Inter (OFL, ver vendor/inter/LICENSE) */
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 400; font-display: swap; src: url("vendor/inter/inter-latin-400.woff2") format("woff2"); }
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 500; font-display: swap; src: url("vendor/inter/inter-latin-500.woff2") format("woff2"); }
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 600; font-display: swap; src: url("vendor/inter/inter-latin-600.woff2") format("woff2"); }
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 700; font-display: swap; src: url("vendor/inter/inter-latin-700.woff2") format("woff2"); }
+
+/* ---------------------------------------------------------------- cor da marca: verde-petróleo */
+:root, [data-bs-theme=light] {
+  --tblr-primary: #0f6b73;
+  --tblr-primary-rgb: 15, 107, 115;
+  --tblr-primary-fg: #ffffff;
+  --tblr-primary-darken: #0c5960;
+  --tblr-primary-lt: rgba(15, 107, 115, .1);
+  --tblr-primary-lt-rgb: 231, 240, 241;
+  --tblr-primary-text-emphasis: #06393d;
+  --tblr-primary-bg-subtle: #cfe1e3;
+  --tblr-primary-border-subtle: #9fc4c7;
+  --tblr-link-color: #0f6b73;
+  --tblr-link-color-rgb: 15, 107, 115;
+  --tblr-link-hover-color: #0c5960;
+  --tblr-link-hover-color-rgb: 12, 89, 96;
+}
+[data-bs-theme=dark] {
+  --tblr-link-color: #5cc2c9;
+  --tblr-link-color-rgb: 92, 194, 201;
+  --tblr-link-hover-color: #8ad6db;
+  --tblr-link-hover-color-rgb: 138, 214, 219;
+  --tblr-primary-text-emphasis: #8ad6db;
+}
+
+/* ---------------------------------------------------------------- logótipo */
+.brand-logo { display: inline-flex; align-items: center; gap: .5rem; color: inherit; text-decoration: none; }
+.brand-word { font-weight: 700; font-size: 1.25rem; letter-spacing: -.01em; }
+.brand-mark-plate { fill: var(--tblr-primary); }
+.brand-mark-line { fill: none; stroke: #fff; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.brand-mark-node { fill: #fff; }
+.navbar-brand a { color: inherit; text-decoration: none; }
+
+/* ---------------------------------------------------------------- barra lateral */
+.navbar-vertical .nav-group {
+  padding: 1rem 1rem .25rem; font-size: .625rem; font-weight: 600; text-transform: uppercase; letter-spacing: .04em;
+  color: var(--tblr-secondary);
+}
+.navbar-vertical .nav-link { gap: .25rem; }
+.nav-kbd { opacity: 0; transition: opacity .15s; }
+.navbar-vertical:focus-within .nav-kbd, .navbar-vertical .nav-link:hover .nav-kbd { opacity: .6; }
+.nav-search { color: var(--tblr-secondary) !important; border: 1px solid var(--tblr-border-color) !important; }
+.nav-user { border-top: 1px solid var(--tblr-border-color); }
+@media (min-width: 992px) {
+  .navbar-vertical .navbar-collapse { flex-direction: column; align-items: stretch; }
+}
+
+/* ---------------------------------------------------------------- página */
+.page-stack { display: flex; flex-direction: column; gap: var(--tblr-page-padding, 1rem); }
+.page-stack > .row-cards { margin-top: 0; }
+#toasts { position: fixed; right: 1rem; bottom: 1rem; z-index: 2000; width: min(420px, calc(100vw - 2rem)); }
+.details dd { margin-bottom: .5rem; word-break: break-word; }
+.history-scroll { max-height: 26rem; overflow-y: auto; }
+.ci-picker, .checks-scroll { max-height: 16rem; overflow-y: auto; }
+tr[data-href] { cursor: pointer; }
+tr.kb-sel { background: var(--tblr-active-bg); box-shadow: inset 3px 0 0 var(--tblr-primary); }
+.codes { display: grid; grid-template-columns: repeat(2, max-content); gap: .5rem 1.5rem; padding: 1rem; margin-bottom: 1rem;
+  background: var(--tblr-bg-surface-secondary); border-radius: var(--tblr-border-radius); }
+.qr { background: #fff; padding: .5rem; width: max-content; border: 1px solid var(--tblr-border-color); border-radius: var(--tblr-border-radius); }
+.qr svg { display: block; }
+
+/* ---------------------------------------------------------------- <dialog> com aspeto de modal Tabler */
+dialog.modal-native { border: 0; padding: 0; background: transparent; width: min(540px, calc(100vw - 2rem)); max-height: calc(100vh - 3.5rem); overflow: visible; }
+dialog.modal-native-lg { width: min(800px, calc(100vw - 2rem)); }
+dialog.modal-native::backdrop, dialog.palette::backdrop { background: rgba(var(--tblr-body-color-rgb, 24, 36, 51), .32); backdrop-filter: blur(2px); }
+dialog.modal-native .modal-content { max-height: calc(100vh - 3.5rem); overflow-y: auto; box-shadow: var(--tblr-box-shadow-dropdown, 0 16px 24px rgba(0, 0, 0, .12)); }
+
+/* ---------------------------------------------------------------- pesquisa global (Ctrl K) */
+dialog.palette { border: 1px solid var(--tblr-border-color); border-radius: var(--tblr-border-radius-lg); padding: 0; margin-top: 12vh;
+  width: min(640px, calc(100vw - 2rem)); background: var(--tblr-bg-surface); color: var(--tblr-body-color); box-shadow: var(--tblr-box-shadow-dropdown); overflow: hidden; }
+dialog.palette input { border-bottom: 1px solid var(--tblr-border-color) !important; box-shadow: none !important; }
+dialog.palette ul { max-height: 50vh; overflow-y: auto; margin: 0; }
+dialog.palette li { cursor: pointer; }
+dialog.palette li .kind { min-width: 4.5rem; justify-content: center; }
+dialog.palette li.active .kind { background: rgba(255, 255, 255, .2) !important; color: inherit !important; }
+dialog.palette li.active .meta { color: inherit !important; opacity: .8; }
+dialog.palette .hint { display: flex; gap: 1rem; padding: .5rem 1rem; border-top: 1px solid var(--tblr-border-color); }
+dialog.palette .hint kbd { margin-right: .25rem; }
+.keys { display: grid; grid-template-columns: max-content 1fr; gap: .5rem 1rem; align-items: center; }
+.keys kbd { margin-right: .25rem; }
+
+/* ---------------------------------------------------------------- mapa de relações (graph.js) */
+.graph-wrap { overflow: auto; max-height: 75vh; border: 1px solid var(--tblr-border-color); border-radius: var(--tblr-border-radius);
+  background: radial-gradient(var(--tblr-border-color) 1px, transparent 1px) 0 0 / 16px 16px, var(--tblr-bg-surface-secondary); }
+svg.graph { display: block; font-family: var(--tblr-font-sans-serif); }
+svg.graph .gedge { fill: none; stroke: var(--tblr-secondary); stroke-width: 1.25; }
+svg.graph .garrow { fill: var(--tblr-secondary); }
+svg.graph .glabel { fill: var(--tblr-secondary); font-size: 10px; paint-order: stroke; stroke: var(--tblr-bg-surface-secondary); stroke-width: 3px; }
+svg.graph .gnode rect { fill: var(--tblr-bg-surface); stroke: var(--tblr-border-color); stroke-width: 1; rx: 4px; }
+svg.graph .gnode:hover rect:first-of-type { stroke: var(--tblr-primary); }
+svg.graph .gnode .gcrit { stroke: none; fill: var(--tblr-border-color); rx: 0; }
+svg.graph .crit-media .gcrit { fill: var(--tblr-azure); }
+svg.graph .crit-alta .gcrit { fill: var(--tblr-orange); }
+svg.graph .crit-critica .gcrit { fill: var(--tblr-red); }
+svg.graph .gcenter rect:first-of-type { fill: var(--tblr-primary); stroke: var(--tblr-primary); }
+svg.graph .gcenter .gname { fill: #fff; }
+svg.graph .gcenter .gtype { fill: rgba(255, 255, 255, .75); }
+svg.graph .gretired { opacity: .4; }
+svg.graph .gname { fill: var(--tblr-body-color); font-size: 13px; font-weight: 600; }
+svg.graph .gtype { fill: var(--tblr-secondary); font-size: 10px; text-transform: uppercase; letter-spacing: .04em; }
+
+/* ---------------------------------------------------------------- impressão (relatório por cliente) */
+@media print {
+  @page { size: A4; margin: 14mm 12mm; }
+  .navbar-vertical, .page-header, #toasts, dialog { display: none !important; }
+  .page-wrapper { margin: 0 !important; }
+  .page-body { margin: 0 !important; }
+  .card { box-shadow: none !important; break-inside: avoid-page; }
+  .report-section { break-inside: auto; }
+  .table-responsive { overflow: visible !important; }
+  thead { display: table-header-group; }
+  tr { break-inside: avoid; }
+  a { color: inherit !important; text-decoration: none !important; }
+}
+
+/* ---------------------------------------------------------------- contraste do texto de estado (tema claro)
+   Os tons do Tabler (verde, laranja, azure) sobre o fundo tingido ficam entre 2,5:1 e 2,8:1.
+   Escurece-se só o texto, para ≥ 4,9:1; o ponto de estado e o fundo mantêm a cor original. */
+[data-bs-theme=light] .bg-green-lt { color: #1a7a2b !important; }
+[data-bs-theme=light] .bg-orange-lt { color: #b04604 !important; }
+[data-bs-theme=light] .bg-red-lt { color: #b02a2a !important; }
+[data-bs-theme=light] .bg-azure-lt { color: #1f68a8 !important; }
+[data-bs-theme=light] .bg-secondary-lt { color: #4b5563 !important; }
+[data-bs-theme=light] .status { color: color-mix(in srgb, var(--tblr-status-color) 62%, #000); }
+[data-bs-theme=light] .status .status-dot { background: var(--tblr-status-color); }

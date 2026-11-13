@@ -1,0 +1,31 @@
+# Arranque: copie .env.example para .env, ajuste, e execute:  docker compose up -d
+# Login inicial: admin / admin123 (ou CMDB_ADMIN_PASSWORD, se definida)
+services:
+  cmdb:
+    build: .
+    image: rizoma:latest
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      CMDB_DB: /data/cmdb.db
+    volumes:
+      - cmdb-data:/data
+    # Sem proxy: exponha diretamente (apenas para testes)
+    ports:
+      - "3000:3000"
+
+  # Proxy com HTTPS automático (Let's Encrypt). Para usar:
+  #   1. aponte o DNS do domínio para este servidor
+  #   2. defina CMDB_DOMAIN no .env e descomente este serviço e o volume "caddy-data"
+  #   3. remova a secção "ports" do serviço cmdb
+  # caddy:
+  #   image: caddy:2-alpine
+  #   restart: unless-stopped
+  #   ports: ["80:80", "443:443"]
+  #   command: caddy reverse-proxy --from ${CMDB_DOMAIN} --to cmdb:3000
+  #   volumes:
+  #     - caddy-data:/data
+
+volumes:
+  cmdb-data:
+  # caddy-data:

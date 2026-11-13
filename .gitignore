@@ -1,0 +1,11 @@
+data/
+*.db
+*.db-wal
+*.db-shm
+node_modules/
+secret.key
+.env
+# gerados
+site/dist/
+screenshots/
+brand/design-system/out/

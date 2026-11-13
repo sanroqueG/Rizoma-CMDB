@@ -1,0 +1,48 @@
+# Integração contínua: testes (API, isolamento entre organizações, workers e browser) e imagem Docker.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  testes:
+    name: Testes (Node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['22.13.0', '24']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Testes
+        # O Chrome já vem instalado nos runners do GitHub: os testes de browser (test/e2e.test.js) correm também
+        env:
+          CMDB_BROWSER: /usr/bin/google-chrome
+        run: node --test test/
+      - name: Verificação de tipos (JSDoc + TypeScript, sem build)
+        # Ferramentas só de verificação: não passam a ser dependências da aplicação
+        run: |
+          npm install --no-save --no-package-lock typescript@5.6.3 @types/node@22.10.2
+          npx tsc -p jsconfig.json
+
+  docker:
+    name: Imagem Docker
+    runs-on: ubuntu-latest
+    needs: testes
+    steps:
+      - uses: actions/checkout@v4
+      - name: Construir
+        run: docker build -t rizoma:ci .
+      - name: Arrancar e verificar o health check
+        run: |
+          docker run -d --name rizoma -p 3000:3000 rizoma:ci
+          for i in $(seq 1 30); do curl -fs http://127.0.0.1:3000/api/health && exit 0; sleep 1; done
+          docker logs rizoma; exit 1
