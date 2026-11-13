@@ -28,7 +28,7 @@ export const L = {
   },
   entity: {
     ci: 'Ativo', client: 'Cliente', site: 'Local', user: 'Utilizador', token: 'Token', relationship: 'Relação', connector: 'Conector cloud',
-    contract: 'Contrato', ticket: 'Ticket', system: 'Sistema', ci_type: 'Tipo de ativo', organization: 'Organização',
+    contract: 'Contrato', ticket: 'Ticket', system: 'Sistema', ci_type: 'Tipo de ativo', organization: 'Organização', webhook: 'Aviso / webhook',
   },
   kind: { licenca: 'Licença', suporte: 'Suporte', manutencao: 'Manutenção', subscricao: 'Subscrição', garantia: 'Garantia', outsourcing: 'Outsourcing', outro: 'Outro' },
   cstatus: { ativo: 'Ativo', terminado: 'Terminado', cancelado: 'Cancelado' },

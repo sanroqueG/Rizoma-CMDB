@@ -174,7 +174,7 @@ test('todas as páginas abrem sem erros', { skip: SKIP, timeout: 300000 }, async
     ['#/contratos/1/editar', /Editar/], ['#/contratos/novo', /Novo contrato/], ['#/ativos/1', /SRV-E2E/], ['#/ativos/1/editar', /Editar/],
     ['#/ativos/novo', /Novo ativo/], ['#/importar', /Importar/], ['#/utilizadores', /Utilizadores/], ['#/auditoria', /Auditoria/],
     ['#/sistema', /Sistema/], ['#/organizacao', /Organização/], ['#/plataforma', /Plataforma/], ['#/conta', /A minha conta/],
-    ['#/tipos', /Tipos de ativo/], ['#/subscricao', /Subscrição/], ['#/integracoes', /Integrações/],
+    ['#/tipos', /Tipos de ativo/], ['#/subscricao', /Subscrição/], ['#/integracoes', /Integrações/], ['#/vulnerabilidades', /Vulnerabilidades/],
   ];
   for (const [hash, h1] of pages) await go(hash, h1);
   assert.deepEqual(errors, [], 'sem exceções JavaScript');

@@ -25,7 +25,9 @@ module.exports = function register(core) {
     const results = tx(() => assets.map((a, i) => {
       if (!a || typeof a !== 'object') fail(400, `Ativo #${i}: formato inválido`);
       try {
-        return reconciler.upsert(tok.client_id, a, actor, 'agent');
+        const res = reconciler.upsert(tok.client_id, a, actor, 'agent');
+        if (Array.isArray(a.software)) res.software = core.cve.setSoftware(res.id, a.software);
+        return res;
       } catch (e) {
         if (e instanceof HttpError) throw e;
         if (/constraint/i.test(e.message)) throw e;

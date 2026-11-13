@@ -250,6 +250,83 @@ const MIGRATIONS = [
       );`);
     },
   },
+  {
+    id: 13,
+    name: 'avisos e webhooks',
+    up(db) {
+      db.exec(`CREATE TABLE webhooks (
+        id           INTEGER PRIMARY KEY,
+        org_id       INTEGER NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+        kind         TEXT NOT NULL CHECK (kind IN ('slack', 'teams', 'generic')),
+        name         TEXT NOT NULL,
+        url_enc      TEXT NOT NULL,
+        secret_enc   TEXT,
+        events       TEXT NOT NULL DEFAULT '[]',
+        client_id    INTEGER REFERENCES clients(id) ON DELETE CASCADE,
+        enabled      INTEGER NOT NULL DEFAULT 1,
+        failures     INTEGER NOT NULL DEFAULT 0,
+        last_status  TEXT,
+        last_error   TEXT,
+        last_sent_at TEXT,
+        created_at   TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+      CREATE INDEX webhooks_org ON webhooks(org_id);
+      -- Fila de envio (outbox): escrita na mesma transação da alteração
+      CREATE TABLE webhook_deliveries (
+        id              INTEGER PRIMARY KEY,
+        webhook_id      INTEGER NOT NULL REFERENCES webhooks(id) ON DELETE CASCADE,
+        event           TEXT NOT NULL,
+        payload         TEXT NOT NULL,
+        status          TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'ok', 'failed')),
+        attempts        INTEGER NOT NULL DEFAULT 0,
+        next_attempt_at INTEGER NOT NULL,
+        last_error      TEXT,
+        sent_at         INTEGER,
+        created_at      TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+      CREATE INDEX webhook_deliveries_due ON webhook_deliveries(status, next_attempt_at);`);
+    },
+  },
+  {
+    id: 14,
+    name: 'inventário de software e vulnerabilidades (CVE)',
+    up(db) {
+      db.exec(`CREATE TABLE ci_software (
+        ci_id     INTEGER NOT NULL REFERENCES cis(id) ON DELETE CASCADE,
+        name      TEXT NOT NULL,
+        version   TEXT NOT NULL DEFAULT '',
+        publisher TEXT,
+        product   TEXT,
+        seen_at   TEXT,
+        PRIMARY KEY (ci_id, name, version)
+      );
+      CREATE INDEX ci_software_product ON ci_software(product);
+      -- Dados públicos (comuns a todas as organizações): CVE por produto CPE e lista KEV da CISA
+      CREATE TABLE cve_products (product TEXT PRIMARY KEY, fetched_at INTEGER, cve_count INTEGER, error TEXT);
+      CREATE TABLE cves (
+        product   TEXT NOT NULL,
+        id        TEXT NOT NULL,
+        score     REAL,
+        severity  TEXT,
+        summary   TEXT,
+        published TEXT,
+        ranges    TEXT NOT NULL,
+        PRIMARY KEY (product, id)
+      );
+      CREATE TABLE kev (cve_id TEXT PRIMARY KEY, date_added TEXT, due_date TEXT, name TEXT);
+      -- Correspondências ativo × CVE (first_seen: para avisar só as novidades)
+      CREATE TABLE ci_vulns (
+        ci_id      INTEGER NOT NULL REFERENCES cis(id) ON DELETE CASCADE,
+        cve_id     TEXT NOT NULL,
+        software   TEXT NOT NULL,
+        version    TEXT NOT NULL,
+        first_seen TEXT NOT NULL,
+        PRIMARY KEY (ci_id, cve_id)
+      );
+      CREATE INDEX ci_vulns_cve ON ci_vulns(cve_id);
+      CREATE INDEX ci_vulns_first_seen ON ci_vulns(first_seen);`);
+    },
+  },
 ];
 
 module.exports = { MIGRATIONS };

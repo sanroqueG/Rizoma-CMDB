@@ -31,13 +31,17 @@ const TABLES = [
   ['tickets', IN_CLIENTS],
   ['ticket_cis', 'ticket_id IN (SELECT t.id FROM tickets t JOIN clients cl ON cl.id = t.client_id WHERE cl.org_id = ?)'],
   ['user_clients', IN_USERS],
+  ['ci_software', 'ci_id IN (SELECT c.id FROM cis c JOIN clients cl ON cl.id = c.client_id WHERE cl.org_id = ?)'],
+  ['ci_vulns', 'ci_id IN (SELECT c.id FROM cis c JOIN clients cl ON cl.id = c.client_id WHERE cl.org_id = ?)'],
   ['api_tokens', IN_CLIENTS],
   ['cloud_connectors', IN_CLIENTS],
   ['rmm_connections', 'org_id = ?'],
   ['rmm_client_map', 'connection_id IN (SELECT id FROM rmm_connections WHERE org_id = ?)'],
+  ['webhooks', 'org_id = ?'],
 ];
 // Apagadas mas não repostas (estado transitório dos utilizadores da organização)
-const TRANSIENT = [['sessions', IN_USERS], ['user_tokens', IN_USERS], ['mfa_challenges', IN_USERS]];
+const TRANSIENT = [['sessions', IN_USERS], ['user_tokens', IN_USERS], ['mfa_challenges', IN_USERS],
+  ['webhook_deliveries', 'webhook_id IN (SELECT id FROM webhooks WHERE org_id = ?)']];
 
 const columnsOf = (db, table) => db.prepare(`PRAGMA table_info(${table})`).all().map((c) => c.name);
 const hasId = (db, table) => columnsOf(db, table).includes('id');

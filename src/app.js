@@ -168,6 +168,12 @@ function createApp(db, opts = {}) {
     /** Substituídas por src/routes/rmm.js. */
     syncRmm: /** @type {(id: number, actor: string) => Promise<any>} */ (async () => null),
     dueRmm: /** @type {(hours: number) => number[]} */ (() => []),
+    /** Substituídas por src/routes/webhooks.js. */
+    webhooks: /** @type {any} */ (null),
+    emitContractExpiry: /** @type {(now?: Date) => number | null} */ (() => null),
+    /** Substituídas por src/routes/vulns.js. */
+    cve: /** @type {any} */ (null),
+    runCveScan: /** @type {(o?: any) => Promise<any>} */ (async () => null),
     /** Substituída por src/routes/privacy.js. */
     purgeDeletedOrgs: /** @type {(now?: Date) => number} */ (() => 0),
     ...require('./http'), // utilitários de validação, constantes e SECURITY_HEADERS
@@ -192,6 +198,8 @@ function createApp(db, opts = {}) {
   require('./routes/privacy')(core);
   require('./routes/support')(core);
   require('./routes/rmm')(core);
+  require('./routes/webhooks')(core);
+  require('./routes/vulns')(core);
   require('./routes/api-docs')(core);
 
   // =========================================================== ficheiros estáticos
@@ -232,6 +240,9 @@ function createApp(db, opts = {}) {
   handle.purgeDeletedOrgs = core.purgeDeletedOrgs;
   handle.syncRmm = (id, actor) => core.syncRmm(id, actor);
   handle.dueRmm = (hours) => core.dueRmm(hours);
+  handle.processWebhooks = (now) => core.webhooks.processQueue(now);
+  handle.emitContractExpiry = (now) => core.emitContractExpiry(now);
+  handle.runCveScan = (o) => core.runCveScan(o);
   handle.sendDigests = system.sendDigests;
   handle.syncConnector = connectors.syncConnector;
   handle.dueConnectors = connectors.dueConnectors;

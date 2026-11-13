@@ -2,6 +2,7 @@
 import { GET, L, META, api, badge, canWrite, card, confirmDialog, critBadge, dash, details, field, fmtDate, fmtDateTime, getClients, h, icon, openDialog, select, sourceBadge, statusBadge, table, toast } from '../core.js';
 import { pageHead, render, setPage } from '../main.js';
 import { ciMapCard } from './clients.js';
+import { ciSoftwareCard } from './vulns.js';
 import { contractsCard } from './contracts.js';
 
 // ======================================================================= ativos — lista
@@ -172,8 +173,8 @@ export async function viewCiForm(id, query) {
 
 // ======================================================================= ativos — detalhe
 export async function viewCi(id) {
-  const [ci, impact, history, contracts, tickets] = await Promise.all([GET(`/api/cis/${id}`), GET(`/api/cis/${id}/impact`),
-    GET(`/api/cis/${id}/history`), GET(`/api/cis/${id}/contracts`), GET(`/api/cis/${id}/tickets`)]);
+  const [ci, impact, history, contracts, tickets, software] = await Promise.all([GET(`/api/cis/${id}`), GET(`/api/cis/${id}/impact`),
+    GET(`/api/cis/${id}/history`), GET(`/api/cis/${id}/contracts`), GET(`/api/cis/${id}/tickets`), ciSoftwareCard(id)]);
 
   const relItem = (r, verbs) => h('div', { class: 'list-group-item' }, h('div', { class: 'row align-items-center g-2' },
     h('div', { class: 'col-auto text-secondary small rel-verb' }, verbs[r.type] || r.type),
@@ -229,6 +230,7 @@ export async function viewCi(id) {
           ['Notas', ci.notes]])),
         card('Atributos', attrs.length ? details(attrs.map(([k, val]) => [k.replace(/_/g, ' '), String(val)]))
           : h('div', { class: 'text-secondary' }, 'Sem atributos adicionais.')),
+        software,
         contractsCard(contracts, { title: 'Contratos' }),
         ticketsCard(tickets, { ci })),
       h('div', { class: 'col-lg-5 d-flex flex-column gap-3' },

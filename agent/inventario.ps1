@@ -67,6 +67,16 @@ $asset = [ordered]@{
 }
 if ($Local) { $asset.site = $Local }
 
+# Software instalado (programas de 64 e 32 bits; sem atualizações do Windows nem componentes do sistema).
+# O Rizoma usa a lista para detetar vulnerabilidades conhecidas (CVE).
+$keys = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*',
+        'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*'
+$software = @(Get-ItemProperty -Path $keys -ErrorAction SilentlyContinue |
+  Where-Object { $_.DisplayName -and -not $_.SystemComponent -and -not $_.ParentKeyName -and $_.ReleaseType -notmatch 'Update|Hotfix' } |
+  ForEach-Object { [ordered]@{ name = $_.DisplayName.Trim(); version = "$($_.DisplayVersion)".Trim(); publisher = "$($_.Publisher)".Trim() } } |
+  Sort-Object { $_.name }, { $_.version } -Unique)
+$asset.software = $software
+
 $json = $asset | ConvertTo-Json -Depth 4
 if ($Teste) { $json; return }
 if (-not $Servidor -or -not $Token) { throw 'Indique -Servidor e -Token (ou use -Teste).' }

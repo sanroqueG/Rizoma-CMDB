@@ -137,9 +137,35 @@ async function hourly() {
   await locks.withLock('scheduler:backup', 60 * 60e3, runDueBackup);
   await runDueSyncs();
   await locks.withLock('scheduler:digest', 30 * 60e3, runDueDigest);
+  // Vulnerabilidades: produtos com cache de mais de 24 h (NVD) e lista KEV; avisa as novidades
+  await locks.withLock('scheduler:cve', 50 * 60e3, async () => {
+    try {
+      const r = await app.runCveScan();
+      if (r && r.products) log.info('Vulnerabilidades atualizadas', { produtos: r.products, avisos: r.notified, erros: r.errors.length });
+    } catch (e) {
+      log.error('Atualização de vulnerabilidades falhou', { err: e });
+    }
+  });
   app.state.throttle.prune();
 }
 setInterval(hourly, 3600e3).unref();
+
+/* Avisos e webhooks: a fila é enviada a cada 15 s, por uma só instância de cada vez (lock na BD). */
+let sendingWebhooks = false;
+setInterval(async () => {
+  if (sendingWebhooks) return;
+  sendingWebhooks = true;
+  try {
+    await app.state.locks.withLock('webhooks:send', 5 * 60e3, async () => {
+      app.emitContractExpiry();
+      await app.processWebhooks();
+    });
+  } catch (e) {
+    log.error('Envio de webhooks falhou', { err: e });
+  } finally {
+    sendingWebhooks = false;
+  }
+}, 15e3).unref();
 setTimeout(hourly, 30e3).unref();
 
 function shutdown() {

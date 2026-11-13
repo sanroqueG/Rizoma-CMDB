@@ -46,11 +46,16 @@ function createStore(db, { dialect = SQLITE_DIALECT } = {}) {
     let org = orgId ?? null;
     if (org === null && clientId) org = one('SELECT org_id FROM clients WHERE id = ?', clientId)?.org_id ?? null;
     if (org === null && entity === 'user' && entityId) org = one('SELECT org_id FROM users WHERE id = ?', entityId)?.org_id ?? null;
-    run('INSERT INTO audit (entity, entity_id, client_id, label, actor, action, changes, org_id) VALUES (?,?,?,?,?,?,?,?)',
+    const r = run('INSERT INTO audit (entity, entity_id, client_id, label, actor, action, changes, org_id) VALUES (?,?,?,?,?,?,?,?)',
       entity, entityId ?? null, clientId ?? null, label ?? null, actor, action,
       changes ? JSON.stringify(changes) : null, org);
+    // Ouvintes (ex.: webhooks) correm na mesma transação: se a alteração for desfeita, o evento também é
+    for (const fn of listeners) fn({ id: Number(r.lastInsertRowid), entity, entityId, clientId, label, actor, action, changes, orgId: org });
   }
-  return { db, one, all, run, tx, audit, sql: dialect };
+  /** @type {Array<(e: any) => void>} */
+  const listeners = [];
+  const onAudit = (fn) => { listeners.push(fn); };
+  return { db, one, all, run, tx, audit, onAudit, sql: dialect };
 }
 
 /**

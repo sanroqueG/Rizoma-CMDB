@@ -10,6 +10,7 @@ import { viewImport } from './views/import.js';
 import { viewOrganization, viewPlatform } from './views/orgs.js';
 import { billingBanner, viewBilling } from './views/billing.js';
 import { viewIntegrations } from './views/integrations.js';
+import { viewVulns } from './views/vulns.js';
 import { viewClientReport } from './views/reports.js';
 import { viewSystem } from './views/system.js';
 
@@ -21,6 +22,7 @@ export function buildShell() {
     ['#/ativos', 'assets', 'Ativos', 'G A'],
     ['#/clientes', 'clients', 'Clientes', 'G C'],
     ['#/contratos', 'contracts', 'Contratos', 'G K'],
+    ['#/vulnerabilidades', 'alert', 'Vulnerabilidades', 'G V'],
     canWrite() && ['#/importar', 'import', 'Importar', 'G I'],
     isAdmin() && ['Administração'],
     isAdmin() && ['#/utilizadores', 'users', 'Utilizadores', 'G U'],
@@ -108,6 +110,7 @@ export const ROUTES = [
   [/^\/organizacao$/, viewOrganization],
   [/^\/tipos$/, viewTypes],
   [/^\/integracoes$/, viewIntegrations],
+  [/^\/vulnerabilidades$/, viewVulns],
   [/^\/subscricao$/, viewBilling],
   [/^\/plataforma$/, viewPlatform],
   [/^\/importar$/, viewImport],
@@ -171,7 +174,7 @@ export function moveRowSel(dir) {
   return true;
 }
 
-export const GO = { d: '#/', a: '#/ativos', c: '#/clientes', k: '#/contratos', i: '#/importar', u: '#/utilizadores', l: '#/auditoria', s: '#/sistema', o: '#/organizacao', t: '#/tipos', n: '#/integracoes', b: '#/subscricao', f: '#/plataforma', p: '#/conta' };
+export const GO = { d: '#/', a: '#/ativos', c: '#/clientes', k: '#/contratos', i: '#/importar', u: '#/utilizadores', l: '#/auditoria', s: '#/sistema', o: '#/organizacao', t: '#/tipos', n: '#/integracoes', v: '#/vulnerabilidades', b: '#/subscricao', f: '#/plataforma', p: '#/conta' };
 export let gPressedAt = 0;
 document.addEventListener('keydown', (e) => {
   if (!ME || !shell) return;

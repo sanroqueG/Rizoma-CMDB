@@ -14,6 +14,11 @@ const asset = obj({
   model: str({ max: 255 }),
   os: str({ max: 255, example: 'Windows 11 Pro' }),
   attributes: dict({ description: 'Atributos livres (até 100), ex.: { "ram_gb": 16 }.' }),
+  software: arr(obj({
+    name: str({ max: 255, required: true, label: 'Nome do software', example: 'Google Chrome' }),
+    version: str({ max: 100, example: '131.0.6778.86' }),
+    publisher: str({ max: 255 }),
+  }), { maxItems: 3000, description: 'Software instalado (substitui a lista anterior do ativo). Usado para detetar vulnerabilidades conhecidas.' }),
 }, { description: 'Ativo descoberto' });
 
 const ingest = anyOf([
