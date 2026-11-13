@@ -21,6 +21,8 @@ const SQLITE_DIALECT = {
 };
 
 function createStore(db, { dialect = SQLITE_DIALECT } = {}) {
+  search.fts = !!db.prepare("SELECT 1 FROM sqlite_master WHERE name = 'cis_fts'").get();
+  try { search.fold = db.prepare("SELECT rz_fold('Á') AS v").get().v === 'a'; } catch { search.fold = false; }
   const one = (sql, ...p) => db.prepare(sql).get(...p);
   const all = (sql, ...p) => db.prepare(sql).all(...p);
   const run = (sql, ...p) => db.prepare(sql).run(...p);
@@ -62,18 +64,24 @@ function createStore(db, { dialect = SQLITE_DIALECT } = {}) {
  * Pesquisa de texto nos ativos. Devolve { sql, params } com uma condição sobre `column` (o id do ativo):
  * com 3+ caracteres por termo usa o índice FTS5 (trigram); termos mais curtos caem para LIKE.
  */
+// Capacidades do SQLite (definidas por createStore): índice FTS5 e função rz_fold (ver db.js)
+const search = { fts: true, fold: false };
+const fold = (s) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
 function ciTextFilter(q, column = 'c.id') {
   const terms = String(q || '').trim().split(/\s+/).filter(Boolean).slice(0, 8);
   if (!terms.length) return { sql: '1=1', params: [] };
-  if (terms.every((t) => t.length >= 3)) {
+  if (search.fts && terms.every((t) => t.length >= 3)) {
     const match = terms.map((t) => `"${t.replace(/"/g, '""')}"`).join(' ');
     return { sql: `${column} IN (SELECT rowid FROM cis_fts WHERE cis_fts MATCH ?)`, params: [match] };
   }
   const cols = ['name', 'hostname', 'serial_number', 'ip_address', 'asset_tag', 'owner', 'model', 'os', 'notes', 'external_id'];
   const alias = column.includes('.') ? column.split('.')[0] + '.' : '';
-  const parts = terms.map(() => `(${cols.map((c) => `${alias}${c} LIKE ? ESCAPE '\\'`).join(' OR ')})`);
-  const params = terms.flatMap((t) => Array(cols.length).fill(`%${t.replace(/[\\%_]/g, (m) => '\\' + m)}%`));
+  // Sem FTS5 (ou termos curtos): LIKE; com rz_fold, também sem diferença de acentos
+  const col = (c) => (search.fold ? `rz_fold(${alias}${c})` : `${alias}${c}`);
+  const parts = terms.map(() => `(${cols.map((c) => `${col(c)} LIKE ? ESCAPE '\\'`).join(' OR ')})`);
+  const params = terms.flatMap((t) => Array(cols.length).fill(`%${(search.fold ? fold(t) : t).replace(/[\\%_]/g, (m) => '\\' + m)}%`));
   return { sql: parts.join(' AND '), params };
 }
 
-module.exports = { createStore, SQLITE_DIALECT, ciTextFilter };
+module.exports = { createStore, SQLITE_DIALECT, ciTextFilter, search };

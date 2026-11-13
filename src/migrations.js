@@ -7,6 +7,43 @@
  *  - a migração 1 (esquema base) está em db.js.
  */
 
+/** O SQLite deste Node tem o módulo FTS5? (o do Node 22 em Linux, por exemplo, não tem) */
+function ftsAvailable(db) {
+  try {
+    db.exec("CREATE VIRTUAL TABLE temp.rz_fts_probe USING fts5(x, tokenize='trigram remove_diacritics 1'); DROP TABLE temp.rz_fts_probe;");
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Índice trigram dos ativos: encontra qualquer parte do texto (como LIKE '%x%'), sem diferença de maiúsculas e acentos.
+ * Idempotente: corre em cada arranque e cria o índice quando o FTS5 passa a estar disponível (ex.: Node atualizado).
+ * Devolve true se o índice existe no fim.
+ */
+function ensureFts(db) {
+  if (db.prepare("SELECT 1 FROM sqlite_master WHERE name = 'cis_fts'").get()) return true;
+  if (!db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'cis'").get()) return false;
+  if (!ftsAvailable(db)) return false;
+  const cols = 'name, hostname, serial_number, ip_address, asset_tag, owner, model, os, notes, external_id';
+  db.exec(`CREATE VIRTUAL TABLE cis_fts USING fts5(${cols}, content='cis', content_rowid='id',
+    tokenize='trigram remove_diacritics 1')`);
+  const vals = (p) => cols.split(', ').map((c) => `${p}.${c}`).join(', ');
+  db.exec(`CREATE TRIGGER cis_fts_ai AFTER INSERT ON cis BEGIN
+      INSERT INTO cis_fts(rowid, ${cols}) VALUES (new.id, ${vals('new')});
+    END;
+    CREATE TRIGGER cis_fts_ad AFTER DELETE ON cis BEGIN
+      INSERT INTO cis_fts(cis_fts, rowid, ${cols}) VALUES ('delete', old.id, ${vals('old')});
+    END;
+    CREATE TRIGGER cis_fts_au AFTER UPDATE ON cis BEGIN
+      INSERT INTO cis_fts(cis_fts, rowid, ${cols}) VALUES ('delete', old.id, ${vals('old')});
+      INSERT INTO cis_fts(rowid, ${cols}) VALUES (new.id, ${vals('new')});
+    END;`);
+  db.exec("INSERT INTO cis_fts(cis_fts) VALUES ('rebuild')");
+  return true;
+}
+
 const MIGRATIONS = [
   {
     id: 2,
@@ -63,22 +100,8 @@ const MIGRATIONS = [
     id: 3,
     name: 'pesquisa de texto (FTS5)',
     up(db) {
-      // Índice trigram: encontra qualquer parte do texto (como LIKE '%x%'), sem diferença de maiúsculas e acentos
-      const cols = 'name, hostname, serial_number, ip_address, asset_tag, owner, model, os, notes, external_id';
-      db.exec(`CREATE VIRTUAL TABLE cis_fts USING fts5(${cols}, content='cis', content_rowid='id',
-        tokenize='trigram remove_diacritics 1')`);
-      const vals = (p) => cols.split(', ').map((c) => `${p}.${c}`).join(', ');
-      db.exec(`CREATE TRIGGER cis_fts_ai AFTER INSERT ON cis BEGIN
-          INSERT INTO cis_fts(rowid, ${cols}) VALUES (new.id, ${vals('new')});
-        END;
-        CREATE TRIGGER cis_fts_ad AFTER DELETE ON cis BEGIN
-          INSERT INTO cis_fts(cis_fts, rowid, ${cols}) VALUES ('delete', old.id, ${vals('old')});
-        END;
-        CREATE TRIGGER cis_fts_au AFTER UPDATE ON cis BEGIN
-          INSERT INTO cis_fts(cis_fts, rowid, ${cols}) VALUES ('delete', old.id, ${vals('old')});
-          INSERT INTO cis_fts(rowid, ${cols}) VALUES (new.id, ${vals('new')});
-        END;`);
-      db.exec("INSERT INTO cis_fts(cis_fts) VALUES ('rebuild')");
+      // O índice FTS5 só é criado se o SQLite do Node o suportar (ver ensureFts); sem ele, a pesquisa usa LIKE
+      ensureFts(db);
       // Índices para listagens paginadas por cursor
       db.exec('CREATE INDEX IF NOT EXISTS contracts_client_end ON contracts(client_id, end_date, id)');
       db.exec('CREATE INDEX IF NOT EXISTS cis_client_name ON cis(client_id, name, id)');
@@ -329,4 +352,4 @@ const MIGRATIONS = [
   },
 ];
 
-module.exports = { MIGRATIONS };
+module.exports = { MIGRATIONS, ensureFts, ftsAvailable };

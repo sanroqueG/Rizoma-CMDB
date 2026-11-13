@@ -149,6 +149,13 @@ function openDb(file) {
   const db = new DatabaseSync(file);
   db.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;');
   runMigrations(db);
+  require('./migrations').ensureFts(db);
+  // rz_fold(texto): minúsculas e sem acentos, para a pesquisa com LIKE quando não há índice FTS5
+  const sqlFn = /** @type {any} */ (db).function; // DatabaseSync.function: Node 22.13+ (os tipos 22.10 ainda não a têm)
+  if (typeof sqlFn === 'function') {
+    sqlFn.call(db, 'rz_fold', { deterministic: true }, (v) => (v === null || v === undefined ? null
+      : String(v).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()));
+  }
   const insertType = db.prepare('INSERT OR IGNORE INTO ci_types (name, category, fields) VALUES (?, ?, ?)');
   for (const [name, category, fields] of DEFAULT_TYPES) insertType.run(name, category, JSON.stringify(fields));
   return db;
