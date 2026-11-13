@@ -1,9 +1,15 @@
 'use strict';
 /* Apoio aos testes: arranca a aplicação numa porta livre e cria clientes HTTP com cookie de sessão. */
 const http = require('node:http');
+const { after } = require('node:test');
 const assert = require('node:assert/strict');
 const { openDb, ensureAdmin } = require('../src/db');
 const { createApp } = require('../src/app');
+
+// Servidores abertos por este ficheiro de testes: fechados no fim, mesmo que um teste falhe a meio
+// (um servidor esquecido deixava o processo pendurado e o CI nunca terminava).
+const open = new Set();
+after(async () => { for (const s of [...open]) await s.close(); });
 
 async function startServer({ adminPassword = 'Admin-pass-123', appOpts = {}, db: givenDb } = {}) {
   const db = givenDb || openDb(':memory:');
@@ -41,10 +47,19 @@ async function startServer({ adminPassword = 'Admin-pass-123', appOpts = {}, db:
     };
   }
 
-  return {
+  let closed = false;
+  const handle = {
     db, app, base, agent,
-    close: () => new Promise((r) => { server.close(() => { db.close(); r(); }); }),
+    close: () => new Promise((r) => {
+      if (closed) { r(); return; }
+      closed = true;
+      open.delete(handle);
+      server.close(() => { try { db.close(); } catch { /* já fechada */ } r(); });
+      server.closeAllConnections(); // ligações keep-alive do fetch atrasavam o fecho
+    }),
   };
+  open.add(handle);
+  return handle;
 }
 
 module.exports = { startServer };

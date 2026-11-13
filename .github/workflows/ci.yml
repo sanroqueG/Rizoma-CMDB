@@ -13,6 +13,7 @@ jobs:
   testes:
     name: Testes (Node ${{ matrix.node }})
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
@@ -27,7 +28,8 @@ jobs:
         env:
           CMDB_BROWSER: /usr/bin/google-chrome
         # spec no log; e cada falha também como anotação do GitHub (visível na API sem autenticação)
-        run: node --test --test-reporter=spec --test-reporter-destination=stdout --test-reporter=./test/gh-annotations.mjs --test-reporter-destination=stdout "test/*.test.js"
+        # --test-timeout e --test-force-exit: um teste pendurado falha (com mensagem) em vez de bloquear o CI
+        run: node --test --test-timeout=180000 --test-force-exit --test-reporter=spec --test-reporter-destination=stdout --test-reporter=./test/gh-annotations.mjs --test-reporter-destination=stdout "test/*.test.js"
       - name: Verificação de tipos (JSDoc + TypeScript, sem build)
         # Ferramentas só de verificação: não passam a ser dependências da aplicação
         run: |
