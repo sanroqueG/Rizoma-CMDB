@@ -1,0 +1,12 @@
+# Fins de linha: LF no repositório e nas cópias de trabalho, em qualquer sistema.
+# Os scripts do agente são servidos tal como estão no disco; um .sh com CRLF falha em Linux/macOS.
+* text=auto eol=lf
+
+# Windows PowerShell 5.1 aceita LF; fixa-se na mesma para não depender de configuração local
+*.ps1 text eol=lf
+*.sh  text eol=lf
+
+# Binários
+*.png    binary
+*.woff2  binary
+*.ico    binary
